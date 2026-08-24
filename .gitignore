@@ -6,5 +6,7 @@
 
 # VS Code and environment
 .vscode/
+**/.vscode/
 .DS_Store
 Thumbs.db
+
