@@ -11,11 +11,12 @@ private:
 
 public:
     Food();
-    Point getPosition();
-    bool isActive();
-    void spawn(const vector<Point>& snakeBody, int maxX, int maxY);
+    Point getPosition() const;
+    bool isActive() const;
+    void spawn(const vector<vector<Point>>& allSnakeBodies, int maxX, int maxY);
+    void spawn(const vector<Point>& singleSnakeBody, int maxX, int maxY);
     void deactivate();
-    void draw();
+    void draw() const;
 };
 
 #endif

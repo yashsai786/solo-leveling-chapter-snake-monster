@@ -10,12 +10,22 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+
+struct PlayerConfig {
+    int startX;
+    int startY;
+    char startDir;
+    int headColor;
+    int bodyColor;
+};
 
 class GameBoard {
 private:
-    Snake* snake;
+    static constexpr int NUM_PLAYERS = 1; // Single source of truth for snake count
+    Snake* snakes[NUM_PLAYERS];
+    int scores[NUM_PLAYERS];
     Food food;
-    int score;
     int level;
     int baseSpeed;
     int currentSpeed;
@@ -26,10 +36,10 @@ private:
 public:
     GameBoard(HighScoreManager* hsm, int difficulty, const string& name);
     ~GameBoard();
-    int getScore();
-    int getLevel();
-    int getSpeed();
-    bool isGameOver();
+    int getScore(int playerIdx = 0) const;
+    int getLevel() const;
+    int getSpeed() const;
+    bool isGameOver() const;
     void updateLevel();
     void spawnFood();
     void drawBorder();

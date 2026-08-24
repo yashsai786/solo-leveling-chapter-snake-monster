@@ -10,19 +10,22 @@ private:
     vector<Point> body;
     char direction;
     int length;
+    int headColor;
+    int bodyColor;
 
 public:
-    Snake(int x, int y, int initialLength = 3);
-    const vector<Point>& getBody();
-    int getLength();
-    char getDirection();
-    Point getHead();
+    Snake(int x, int y, int initialLength = 3, char initialDirection = DIR_RIGHT, int hColor = 10, int bColor = 2);
+    const vector<Point>& getBody() const;
+    int getLength() const;
+    char getDirection() const;
+    Point getHead() const;
     void changeDirection(char newDirection);
     bool move(Food& food);
-    bool checkSelfCollision();
-    bool checkBoundaryCollision(int maxX, int maxY);
-    void draw();
-    void clearTail();
+    bool checkSelfCollision() const;
+    bool checkOtherCollision(const Snake& other) const;
+    bool checkBoundaryCollision(int maxX, int maxY) const;
+    void draw() const;
+    void clearTail() const;
 };
 
 #endif

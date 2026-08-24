@@ -3,12 +3,13 @@
 #include <ctime>
 #include <iostream>
 using namespace std;
+
 Food::Food() : active(false) {}
 
-Point Food::getPosition() { return position; }
-bool Food::isActive() { return active; }
+Point Food::getPosition() const { return position; }
+bool Food::isActive() const { return active; }
 
-void Food::spawn(const vector<Point>& snakeBody, int maxX, int maxY) {
+void Food::spawn(const vector<vector<Point>>& allSnakeBodies, int maxX, int maxY) {
     vector<Point> validPositions;
     
     for (int x = 2; x < maxX - 2; x++) {
@@ -16,11 +17,14 @@ void Food::spawn(const vector<Point>& snakeBody, int maxX, int maxY) {
             Point candidate(x, y);
             bool occupied = false;
             
-            for (const Point& segment : snakeBody) {
-                if (candidate == segment) {
-                    occupied = true;
-                    break;
+            for (const auto& body : allSnakeBodies) {
+                for (const Point& segment : body) {
+                    if (candidate == segment) {
+                        occupied = true;
+                        break;
+                    }
                 }
+                if (occupied) break;
             }
             
             if (!occupied) {
@@ -35,11 +39,16 @@ void Food::spawn(const vector<Point>& snakeBody, int maxX, int maxY) {
     }
 }
 
+void Food::spawn(const vector<Point>& singleSnakeBody, int maxX, int maxY) {
+    vector<vector<Point>> wrapper = { singleSnakeBody };
+    spawn(wrapper, maxX, maxY);
+}
+
 void Food::deactivate() {
     active = false;
 }
 
-void Food::draw() {
+void Food::draw() const {
     if (active) {
         gotoxy(position.xCoord, position.yCoord);
         setColor(12);

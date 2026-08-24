@@ -1,9 +1,14 @@
 #include "GameBoard.h"
 #include <iostream>
 using namespace std;
+
+static const PlayerConfig PLAYER_CONFIGS[1] = {
+    { consoleWidth / 2, consoleHeight / 2, DIR_RIGHT, 10, 2 }
+};
+
 GameBoard::GameBoard(HighScoreManager* hsm, int difficulty, const string& name) : 
-    score(0), level(1), gameOver(false), highScoreManager(hsm), playerName(name) {
-    srand(time(0));
+    level(1), gameOver(false), highScoreManager(hsm), playerName(name) {
+    srand(static_cast<unsigned int>(time(0)));
     initScreen();
     
     switch(difficulty) {
@@ -14,20 +19,33 @@ GameBoard::GameBoard(HighScoreManager* hsm, int difficulty, const string& name) 
     }
     currentSpeed = baseSpeed;
     
-    snake = new Snake(consoleWidth / 2, consoleHeight / 2, 3);
+    for (int i = 0; i < NUM_PLAYERS; i++) {
+        scores[i] = 0;
+        snakes[i] = new Snake(PLAYER_CONFIGS[i].startX, PLAYER_CONFIGS[i].startY, 3,
+                              PLAYER_CONFIGS[i].startDir, PLAYER_CONFIGS[i].headColor, PLAYER_CONFIGS[i].bodyColor);
+    }
+
+    system("cls");
+    drawBorder();
+    displayInstructions();
 }
 
 GameBoard::~GameBoard() { 
-    delete snake; 
+    for (int i = 0; i < NUM_PLAYERS; i++) {
+        delete snakes[i];
+    }
 }
 
-int GameBoard::getScore() { return score; }
-int GameBoard::getLevel() { return level; }
-int GameBoard::getSpeed() { return currentSpeed; }
-bool GameBoard::isGameOver() { return gameOver; }
+int GameBoard::getScore(int playerIdx) const { 
+    if (playerIdx >= 0 && playerIdx < NUM_PLAYERS) return scores[playerIdx];
+    return 0;
+}
+int GameBoard::getLevel() const { return level; }
+int GameBoard::getSpeed() const { return currentSpeed; }
+bool GameBoard::isGameOver() const { return gameOver; }
 
 void GameBoard::updateLevel() {
-    int newLevel = (score / 10) + 1;
+    int newLevel = (scores[0] / 10) + 1;
     if (newLevel > level) {
         level = newLevel;
         currentSpeed = max(30, baseSpeed - (level - 1) * (baseSpeed / 10));
@@ -35,7 +53,11 @@ void GameBoard::updateLevel() {
 }
 
 void GameBoard::spawnFood() {
-    food.spawn(snake->getBody(), consoleWidth, consoleHeight);
+    vector<vector<Point>> allBodies;
+    for (int i = 0; i < NUM_PLAYERS; i++) {
+        allBodies.push_back(snakes[i]->getBody());
+    }
+    food.spawn(allBodies, consoleWidth, consoleHeight);
 }
 
 void GameBoard::drawBorder() {
@@ -64,7 +86,7 @@ void GameBoard::displayGameInfo() {
     
     gotoxy(consoleWidth / 2 - 8, 0);
     setColor(14);
-    cout << "Score: " << score;
+    cout << "Score: " << scores[0];
     
     gotoxy(consoleWidth / 2 + 10, 0);
     setColor(13);
@@ -123,64 +145,62 @@ void GameBoard::showLevelUpMessage() {
 }
 
 void GameBoard::draw() {
-    //system("cls");
-    COORD coord = {0, 0};
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-    drawBorder();
     displayGameInfo();
-    displayInstructions();
-    
-    snake->draw();
+    for (int i = 0; i < NUM_PLAYERS; i++) {
+        snakes[i]->draw();
+    }
     food.draw();
 }
 
 bool GameBoard::update() {
     if (gameOver) return false;
     
-    snake->clearTail();
-    bool foodEaten = snake->move(food);
-    
-    if (foodEaten) {
-        score++;
-        MessageBeep(MB_ICONASTERISK);
-        int oldLevel = level;
-        updateLevel();
+    for (int i = 0; i < NUM_PLAYERS; i++) {
+        snakes[i]->clearTail();
+        bool foodEaten = snakes[i]->move(food);
         
-        if (level > oldLevel) {
-            draw();
-            showLevelUpMessage();
-            draw();
+        if (foodEaten) {
+            scores[i]++;
+            MessageBeep(MB_ICONASTERISK);
+            int oldLevel = level;
+            updateLevel();
+            
+            if (level > oldLevel) {
+                draw();
+                showLevelUpMessage();
+                draw();
+            }
+            
+            spawnFood();
         }
         
-        spawnFood();
-    }
-    
-    if (snake->checkSelfCollision() || snake->checkBoundaryCollision(consoleWidth, consoleHeight)) {
-        gameOver = true;
-        return false;
+        if (snakes[i]->checkSelfCollision() || snakes[i]->checkBoundaryCollision(consoleWidth, consoleHeight)) {
+            gameOver = true;
+            return false;
+        }
     }
     
     return true;
 }
 
 void GameBoard::getInput() {
-    if (_kbhit()) {
+    while (_kbhit()) {
         int key = _getch();
 
         if (key == 0 || key == 224) {
             key = _getch();
             switch (key) {
-                case 72: snake->changeDirection(DIR_UP); break;
-                case 80: snake->changeDirection(DIR_DOWN); break;
-                case 75: snake->changeDirection(DIR_LEFT); break;
-                case 77: snake->changeDirection(DIR_RIGHT); break;
+                case 72: snakes[0]->changeDirection(DIR_UP); break;
+                case 80: snakes[0]->changeDirection(DIR_DOWN); break;
+                case 75: snakes[0]->changeDirection(DIR_LEFT); break;
+                case 77: snakes[0]->changeDirection(DIR_RIGHT); break;
             }
         } else {
             switch (tolower(key)) {
-                case 'w': snake->changeDirection(DIR_UP); break;
-                case 'a': snake->changeDirection(DIR_LEFT); break;
-                case 's': snake->changeDirection(DIR_DOWN); break;
-                case 'd': snake->changeDirection(DIR_RIGHT); break;
+                case 'w': snakes[0]->changeDirection(DIR_UP); break;
+                case 'a': snakes[0]->changeDirection(DIR_LEFT); break;
+                case 's': snakes[0]->changeDirection(DIR_DOWN); break;
+                case 'd': snakes[0]->changeDirection(DIR_RIGHT); break;
                 case 'p':
                     gotoxy(consoleWidth / 2 - 5, consoleHeight / 2);
                     setColor(14);
@@ -193,7 +213,6 @@ void GameBoard::getInput() {
 }
 
 void GameBoard::displayGameOver() {
-    //system("cls");
     COORD coord = {0, 0};
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
     MessageBeep(MB_ICONHAND);
@@ -205,18 +224,18 @@ void GameBoard::displayGameOver() {
     
     setColor(7);
     cout << "   Player: " << playerName << endl;
-    cout << "   Final Score: " << score << endl;
+    cout << "   Final Score: " << scores[0] << endl;
     cout << "   Level Reached: " << level << endl;
     cout << "   High Score: " << highScoreManager->getHighestScore() << endl;
     
     int highest = highScoreManager->getHighestScore();
-    if (score > highest && score > 0) {
-        highScoreManager->addHighScore(playerName, score);
+    if (scores[0] > highest && scores[0] > 0) {
+        highScoreManager->addHighScore(playerName, scores[0]);
         setColor(14);
         cout << "\n   🎉 NEW HIGH SCORE! 🎉\n";
         cout << "   Congratulations, " << playerName << "!\n";
     }
-    else if (score == highest && score > 0) {
+    else if (scores[0] == highest && scores[0] > 0) {
         setColor(11);
         cout << "\n   ⭐ You matched the high score! ⭐\n";
     }
