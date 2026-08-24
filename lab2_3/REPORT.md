@@ -47,6 +47,8 @@ During human review of the generated glossary, we made four key editorial decisi
 | 2 | `6532c1d` | lab2_3/audits/main.md: audit code smells on main baseline | 1 | +27 | -0 |
 | 3 | `873eee2` | refactor: consolidate snake count into snakes[NUM_PLAYERS] — single source of truth | 6 | +151 | -103 |
 | 4 | `4a2a7ab` | feat: implement two-player mode using decoupled player configuration | 3 | +70 | -61 |
+| 5 | `c3b40ef` | lab2_3/REPORT.md: complete all 8 sections and install skill files | 8 | +458 | -0 |
+| 6 | `a8f5cad` | chore: remove tracked binaries and .vscode configs from branch | 6 | +0 | -47 |
 
 ---
 
