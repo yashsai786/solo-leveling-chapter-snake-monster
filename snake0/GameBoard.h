@@ -22,7 +22,7 @@ struct PlayerConfig {
 
 class GameBoard {
 private:
-    static constexpr int NUM_PLAYERS = 1; // Single source of truth for snake count
+    static constexpr int NUM_PLAYERS = 2; // Two-player multiplayer mode
     Snake* snakes[NUM_PLAYERS];
     int scores[NUM_PLAYERS];
     Food food;
@@ -30,6 +30,7 @@ private:
     int baseSpeed;
     int currentSpeed;
     bool gameOver;
+    int loserPlayer;
     HighScoreManager* highScoreManager;
     string playerName;
 

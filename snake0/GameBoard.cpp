@@ -2,12 +2,13 @@
 #include <iostream>
 using namespace std;
 
-static const PlayerConfig PLAYER_CONFIGS[1] = {
-    { consoleWidth / 2, consoleHeight / 2, DIR_RIGHT, 10, 2 }
+static const PlayerConfig PLAYER_CONFIGS[2] = {
+    { consoleWidth / 4, consoleHeight / 2, DIR_RIGHT, 10, 2 },       // Player 1: Green, Arrow keys
+    { (3 * consoleWidth) / 4, consoleHeight / 2, DIR_LEFT, 11, 3 }   // Player 2: Cyan, WASD keys
 };
 
 GameBoard::GameBoard(HighScoreManager* hsm, int difficulty, const string& name) : 
-    level(1), gameOver(false), highScoreManager(hsm), playerName(name) {
+    level(1), gameOver(false), loserPlayer(-1), highScoreManager(hsm), playerName(name) {
     srand(static_cast<unsigned int>(time(0)));
     initScreen();
     
@@ -45,7 +46,8 @@ int GameBoard::getSpeed() const { return currentSpeed; }
 bool GameBoard::isGameOver() const { return gameOver; }
 
 void GameBoard::updateLevel() {
-    int newLevel = (scores[0] / 10) + 1;
+    int maxScore = max(scores[0], scores[1]);
+    int newLevel = (maxScore / 10) + 1;
     if (newLevel > level) {
         level = newLevel;
         currentSpeed = max(30, baseSpeed - (level - 1) * (baseSpeed / 10));
@@ -81,30 +83,26 @@ void GameBoard::drawBorder() {
 
 void GameBoard::displayGameInfo() {
     gotoxy(2, 0);
-    setColor(11);
-    cout << "Player: " << playerName;
+    setColor(10);
+    cout << "P1 (Arrows): " << scores[0];
     
     gotoxy(consoleWidth / 2 - 8, 0);
-    setColor(14);
-    cout << "Score: " << scores[0];
+    setColor(11);
+    cout << "P2 (WASD): " << scores[1];
     
     gotoxy(consoleWidth / 2 + 10, 0);
     setColor(13);
     cout << "Level: " << level;
     
-    gotoxy(consoleWidth - 20, 0);
-    setColor(10);
+    gotoxy(consoleWidth - 18, 0);
+    setColor(14);
     cout << "Speed: " << currentSpeed << "ms";
-    
-    gotoxy(consoleWidth - 35, 0);
-    setColor(6);
-    cout << "Best: " << highScoreManager->getHighestScore();
 }
 
 void GameBoard::displayInstructions() {
     gotoxy(2, consoleHeight - 1);
     setColor(8);
-    cout << "Controls: WASD or Arrow Keys | P: Pause";
+    cout << "P1: Arrow Keys | P2: W/A/S/D | P: Pause";
 }
 
 void GameBoard::showLevelUpMessage() {
@@ -155,29 +153,43 @@ void GameBoard::draw() {
 bool GameBoard::update() {
     if (gameOver) return false;
     
+    bool foodEatenAny = false;
     for (int i = 0; i < NUM_PLAYERS; i++) {
         snakes[i]->clearTail();
-        bool foodEaten = snakes[i]->move(food);
-        
-        if (foodEaten) {
+        if (snakes[i]->move(food)) {
             scores[i]++;
-            MessageBeep(MB_ICONASTERISK);
-            int oldLevel = level;
-            updateLevel();
-            
-            if (level > oldLevel) {
-                draw();
-                showLevelUpMessage();
-                draw();
-            }
-            
-            spawnFood();
+            foodEatenAny = true;
+        }
+    }
+    
+    if (foodEatenAny) {
+        MessageBeep(MB_ICONASTERISK);
+        int oldLevel = level;
+        updateLevel();
+        
+        if (level > oldLevel) {
+            draw();
+            showLevelUpMessage();
+            draw();
         }
         
-        if (snakes[i]->checkSelfCollision() || snakes[i]->checkBoundaryCollision(consoleWidth, consoleHeight)) {
-            gameOver = true;
-            return false;
-        }
+        spawnFood();
+    }
+    
+    bool p1Died = snakes[0]->checkSelfCollision() || 
+                  snakes[0]->checkBoundaryCollision(consoleWidth, consoleHeight) ||
+                  snakes[0]->checkOtherCollision(*snakes[1]);
+                  
+    bool p2Died = snakes[1]->checkSelfCollision() || 
+                  snakes[1]->checkBoundaryCollision(consoleWidth, consoleHeight) ||
+                  snakes[1]->checkOtherCollision(*snakes[0]);
+                  
+    if (p1Died || p2Died) {
+        gameOver = true;
+        if (p1Died && p2Died) loserPlayer = 2; // Both died / Draw
+        else if (p1Died) loserPlayer = 0;      // Player 1 died
+        else loserPlayer = 1;                  // Player 2 died
+        return false;
     }
     
     return true;
@@ -197,10 +209,10 @@ void GameBoard::getInput() {
             }
         } else {
             switch (tolower(key)) {
-                case 'w': snakes[0]->changeDirection(DIR_UP); break;
-                case 'a': snakes[0]->changeDirection(DIR_LEFT); break;
-                case 's': snakes[0]->changeDirection(DIR_DOWN); break;
-                case 'd': snakes[0]->changeDirection(DIR_RIGHT); break;
+                case 'w': snakes[1]->changeDirection(DIR_UP); break;
+                case 'a': snakes[1]->changeDirection(DIR_LEFT); break;
+                case 's': snakes[1]->changeDirection(DIR_DOWN); break;
+                case 'd': snakes[1]->changeDirection(DIR_RIGHT); break;
                 case 'p':
                     gotoxy(consoleWidth / 2 - 5, consoleHeight / 2);
                     setColor(14);
@@ -223,33 +235,28 @@ void GameBoard::displayGameOver() {
     cout << "   ╚══════════════════════════════╝\n\n";
     
     setColor(7);
-    cout << "   Player: " << playerName << endl;
-    cout << "   Final Score: " << scores[0] << endl;
-    cout << "   Level Reached: " << level << endl;
-    cout << "   High Score: " << highScoreManager->getHighestScore() << endl;
-    
-    int highest = highScoreManager->getHighestScore();
-    if (scores[0] > highest && scores[0] > 0) {
-        highScoreManager->addHighScore(playerName, scores[0]);
-        setColor(14);
-        cout << "\n   🎉 NEW HIGH SCORE! 🎉\n";
-        cout << "   Congratulations, " << playerName << "!\n";
-    }
-    else if (scores[0] == highest && scores[0] > 0) {
-        setColor(11);
-        cout << "\n   ⭐ You matched the high score! ⭐\n";
-    }
+    cout << "   Player 1 (Green) Score: " << scores[0] << endl;
+    cout << "   Player 2 (Cyan)  Score: " << scores[1] << endl;
+    cout << "   Level Reached: " << level << endl << endl;
 
-    cout << "\n";
-    setColor(11);
-    if (level >= 10) {
-        cout << "   🏆 LEGENDARY! You're a Snake Master!\n";
-    } else if (level >= 7) {
-        cout << "   ⭐ EXCELLENT! Great skills!\n";
-    } else if (level >= 4) {
-        cout << "   👍 GOOD JOB! Keep practicing!\n";
+    if (loserPlayer == 0) {
+        setColor(11);
+        cout << "   🏆 PLAYER 2 WINS! (Player 1 crashed)\n";
+    } else if (loserPlayer == 1) {
+        setColor(10);
+        cout << "   🏆 PLAYER 1 WINS! (Player 2 crashed)\n";
     } else {
-        cout << "   💪 Nice try! You'll do better next time!\n";
+        setColor(14);
+        cout << "   ⚔️ IT'S A DRAW! (Both players collided)\n";
+    }
+    
+    int topMatchScore = max(scores[0], scores[1]);
+    int highest = highScoreManager->getHighestScore();
+    if (topMatchScore > highest && topMatchScore > 0) {
+        string winnerName = (scores[0] >= scores[1]) ? (playerName + "_P1") : (playerName + "_P2");
+        highScoreManager->addHighScore(winnerName, topMatchScore);
+        setColor(14);
+        cout << "\n   🎉 NEW HIGH SCORE: " << topMatchScore << "! 🎉\n";
     }
     
     setColor(10);
