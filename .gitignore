@@ -1,0 +1,10 @@
+# Compiled binaries and object files
+*.exe
+*.o
+*.obj
+*.out
+
+# VS Code and environment
+.vscode/
+.DS_Store
+Thumbs.db
